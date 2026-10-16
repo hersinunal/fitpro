@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FIT-PRO 40">
+    <title>FIT-PRO 40 | Akıllı Performans & Takip Sistemi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#10b981', 600: '#059669', 700: '#047857' },
+                        darkbg: '#090d16',
+                        cardbg: '#131b2e',
+                        accent: '#3b82f6'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        .pb-safe { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 min-h-screen pb-safe">
+
+    <!-- Header -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-white font-extrabold text-sm shadow-lg shadow-brand-500/20">
+                40+
+            </div>
+            <div>
+                <h1 class="text-sm font-bold text-white leading-tight">FIT-PRO <span class="text-brand-500">40</span></h1>
+                <p class="text-[10px] text-slate-400" id="syncStatus">● Google Sheets Bağlı</p>
+            </div>
+        </div>
+        <button onclick="fetchProgramFromSheets()" class="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-rotate text-brand-500"></i>
+            <span class="text-[11px]">Eşitle</span>
+        </button>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-md mx-auto px-4 pt-4">
+
+        <!-- VIEW 1: WORKOUT -->
+        <section id="view-workout" class="app-view space-y-4">
+            
+            <!-- Program Selector & Day Card -->
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl space-y-3">
+                <div class="flex justify-between items-center">
+                    <span id="currentDayBadge" class="bg-brand-500/10 text-brand-400 text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider border border-brand-500/30">Cuma</span>
+                    <span id="targetDurationBadge" class="text-[11px] text-slate-400"><i class="fa-regular fa-clock mr-1 text-brand-500"></i> 30 Dk Güç + Kardiyo</span>
+                </div>
+                <div>
+                    <h2 id="workoutTitle" class="text-base font-bold text-white">Yükleniyor...</h2>
+                    <p id="workoutDesc" class="text-xs text-slate-400 mt-0.5">Program Google Tablodan getiriliyor.</p>
+                </div>
+                <div class="flex gap-2">
+                    <select id="programSelector" onchange="changeActiveProgram(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-brand-500">
+                        <option value="auto">📅 Otomatik Gün Seçimi</option>
+                        <option value="Pazartesi">🏋️ Pazartesi: Full-Body A</option>
+                        <option value="Salı">😴 Salı: Dinlenme</option>
+                        <option value="Çarşamba">🔥 Çarşamba: Full-Body B</option>
+                        <option value="Perşembe">😴 Perşembe: Dinlenme</option>
+                        <option value="Cuma">⚡ Cuma: Full-Body A</option>
+                        <option value="Cumartesi">🚶 Cumartesi: Dinlenme / Serbest</option>
+                        <option value="Pazar">💥 Pazar: Full-Body B</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Rest Timer Bar (Only on workout days) -->
+            <div id="timerBar" class="bg-cardbg border border-slate-800 p-3.5 rounded-2xl flex items-center justify-between shadow-md">
+                <div class="flex items-center gap-2.5">
+                    <div class="bg-blue-500/10 text-blue-400 p-2.5 rounded-xl border border-blue-500/20">
+                        <i class="fa-solid fa-stopwatch text-lg"></i>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase font-semibold">Set Dinlenme Sayacı</div>
+                        <div id="timerDisplay" class="text-xl font-black font-mono text-white">00:45</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="startTimer(45)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-700">45s</button>
+                    <button onclick="startTimer(60)" class="bg-slate-900 hover:bg-slate-800 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-700">60s</button>
+                    <button onclick="resetTimer()" class="bg-rose-950/40 hover:bg-rose-900/50 text-rose-400 px-2.5 py-1.5 rounded-lg text-xs border border-rose-800/50"><i class="fa-solid fa-rotate-left"></i></button>
+                </div>
+            </div>
+
+            <!-- Ağırlık Egzersizleri Listesi -->
+            <div id="exerciseList" class="space-y-3">
+                <div class="text-center py-8 text-xs text-slate-500">Egzersizler yükleniyor...</div>
+            </div>
+
+            <!-- TEK VE ŞIK KARDİYO KARTI (Kg/Tekrar Yok, Sadece Evet/Hayır) -->
+            <div id="cardioSection" class="hidden bg-cardbg border border-slate-800 p-4 rounded-2xl space-y-2 shadow-xl">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                            <i class="fa-solid fa-person-biking text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 id="cardioTitle" class="text-xs font-bold text-white">30 Dk Kondisyon Bisikleti (Zone 2)</h3>
+                            <p id="cardioDesc" class="text-[10px] text-slate-400">Nabız: 110-125 BPM (Yağ oksidasyonu)</p>
+                        </div>
+                    </div>
+                    <label class="cursor-pointer">
+                        <input type="checkbox" id="cardioCheck" class="w-6 h-6 rounded-lg text-brand-500 bg-slate-900 border-slate-700 focus:ring-0 cursor-pointer">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Kaydet Butonu -->
+            <div id="completeBtnContainer" class="hidden pt-1">
+                <button onclick="completeAndSaveWorkout()" class="w-full py-3.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-xs flex justify-center items-center gap-2 shadow-lg shadow-brand-600/30 transition">
+                    <i class="fa-solid fa-circle-check"></i> Antrenmanı Tamamla & Tabloya Kaydet
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 2: SUPPLEMENTS -->
+        <section id="view-supplements" class="app-view hidden space-y-4">
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl">
+                <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-capsules text-brand-500"></i> Günlük Kanıta Dayalı Supplement Planı
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">40 yaş hücresel yenilenme ve hormon dengesi protokolü.</p>
+            </div>
+            <div class="space-y-3" id="supplementList"></div>
+        </section>
+
+        <!-- VIEW 3: NUTRITION & WATER (YAZIO) -->
+        <section id="view-nutrition" class="app-view hidden space-y-4">
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-md flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="p-3 bg-blue-500/10 text-blue-400 rounded-xl text-xl">
+                        <i class="fa-solid fa-glass-water"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400">Günlük Su Hedefi</div>
+                        <div class="text-base font-bold text-white"><span id="waterDisplay">0</span> / 3500 ml</div>
+                    </div>
+                </div>
+                <div class="flex gap-1.5">
+                    <button onclick="addWater(250)" class="px-2.5 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg text-xs font-semibold border border-blue-500/30">+250ml</button>
+                    <button onclick="addWater(500)" class="px-2.5 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg text-xs font-semibold border border-blue-500/30">+500ml</button>
+                </div>
+            </div>
+
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-md space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <i class="fa-solid fa-utensils text-amber-500"></i> Yazıo Makro Değerleri
+                    </h3>
+                    <span class="text-[10px] text-slate-400">Hedef: 2200 kcal</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Kalori (kcal):</label>
+                        <input type="number" id="macroCal" placeholder="2150" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Protein (g):</label>
+                        <input type="number" id="macroProt" placeholder="180" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Karb (g):</label>
+                        <input type="number" id="macroCarb" placeholder="180" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Yağ (g):</label>
+                        <input type="number" id="macroFat" placeholder="70" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                </div>
+                <button onclick="saveDailyNutrition()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 transition">
+                    Yazıo Verilerini Tabloya Kaydet
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 4: METRICS & GRAPHS -->
+        <section id="view-metrics" class="app-view hidden space-y-4">
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-brand-500"></i> Kilo & Bel Değişimi
+                </h3>
+                <div class="h-48">
+                    <canvas id="metricsChart"></canvas>
+                </div>
+            </div>
+            <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-ruler-combined text-accent"></i> Yeni Ölçüm Ekle
+                </h3>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Kilo (kg):</label>
+                        <input type="number" step="0.1" id="mWeight" placeholder="110.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Bel (cm):</label>
+                        <input type="number" step="0.5" id="mWaist" placeholder="108.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Göğüs (cm):</label>
+                        <input type="number" step="0.5" id="mChest" placeholder="115.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                    <div>
+                        <label class="text-slate-400 text-[11px]">Kol (cm):</label>
+                        <input type="number" step="0.5" id="mArm" placeholder="38.0" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-xs mt-0.5">
+                    </div>
+                </div>
+                <button onclick="saveBodyMetric()" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white font-bold rounded-xl text-xs transition">
+                    Ölçümü Tabloya Kaydet
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-50 px-4 py-2">
+        <div class="max-w-md mx-auto flex justify-between items-center text-xs">
+            <button onclick="switchTab('workout')" id="nav-workout" class="nav-btn active flex flex-col items-center gap-1 text-brand-500">
+                <i class="fa-solid fa-dumbbell text-base"></i>
+                <span class="text-[10px]">Antrenman</span>
+            </button>
+            <button onclick="switchTab('supplements')" id="nav-supplements" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-capsules text-base"></i>
+                <span class="text-[10px]">Supplement</span>
+            </button>
+            <button onclick="switchTab('nutrition')" id="nav-nutrition" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-utensils text-base"></i>
+                <span class="text-[10px]">Beslenme</span>
+            </button>
+            <button onclick="switchTab('metrics')" id="nav-metrics" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-chart-line text-base"></i>
+                <span class="text-[10px]">Ölçümler</span>
+            </button>
+        </div>
+    </nav>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbyb-VkwvpK6OIM5-u6WyZzuiZL_NVHLhH4_paCD3_ohFtilzzea17mazF6eUfk_aLY84g/exec";
+
+        const SUPPLEMENT_SCHEDULE = [
+            { id: "omega", name: "Omega-3 (Balık Yağı)", dose: "2000 mg", time: "Öğle / Akşam Yemeği", reason: "Eklem ve kardiyovasküler inflamasyonu baskılar.", taken: false },
+            { id: "d3k2", name: "Vitamin D3 + K2", dose: "5000 IU / 100 mcg", time: "Öğle Yemeği", reason: "Testosteron sentezi ve bağışıklık desteği.", taken: false },
+            { id: "creatine", name: "Kreatin Monohidrat", dose: "5 Gram", time: "Öğle / Antrenman Sonrası", reason: "Hücresel ATP üretimi ve zihinsel berraklık.", taken: false },
+            { id: "whey", name: "Whey Protein", dose: "1 Ölçek (30g)", time: "İkindi / Antrenman Sonu", reason: "Anabolik direnci kırma ve pratik protein.", taken: false },
+            { id: "mag", name: "Magnezyum Glisinat", dose: "300-400 mg", time: "Yatmadan 45 Dk Önce", reason: "Derin yavaş dalga uykusu (SWS) ve kas toparlanması.", taken: false }
+        ];
+
+        let state = {
+            activeDay: "Cuma",
+            programData: [],
+            metrics: JSON.parse(localStorage.getItem('fitpro_metrics')) || [{ date: 'Bugün', weight: 110, waist: 108 }],
+            supplements: JSON.parse(localStorage.getItem('fitpro_supps')) || SUPPLEMENT_SCHEDULE,
+            water: parseInt(localStorage.getItem('fitpro_water')) || 0
+        };
+
+        let timerInterval = null;
+        let chartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initDay();
+            fetchProgramFromSheets();
+            renderSupplements();
+            initChart();
+            document.getElementById('waterDisplay').innerText = state.water;
+        });
+
+        function initDay() {
+            const days = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
+            const today = new Date().getDay();
+            state.activeDay = days[today];
+            document.getElementById('currentDayBadge').innerText = state.activeDay;
+            document.getElementById('programSelector').value = state.activeDay;
+        }
+
+        function changeActiveProgram(val) {
+            if (val === 'auto') {
+                initDay();
+            } else {
+                state.activeDay = val;
+                document.getElementById('currentDayBadge').innerText = state.activeDay;
+            }
+            renderExercises();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.app-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('text-brand-500');
+                el.classList.add('text-slate-400');
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('text-slate-400');
+                activeBtn.classList.add('text-brand-500');
+            }
+            if (tabId === 'metrics') updateChart();
+        }
+
+        async function fetchProgramFromSheets() {
+            document.getElementById('syncStatus').innerText = "⏳ Veriler alınıyor...";
+            try {
+                const res = await fetch(`${API_URL}?action=getProgram`);
+                const json = await res.json();
+                if (json.status === "success" && json.data.length > 0) {
+                    state.programData = json.data;
+                    localStorage.setItem('fitpro_cached_prog', JSON.stringify(json.data));
+                    document.getElementById('syncStatus').innerText = "● Tablo Güncel";
+                }
+            } catch (err) {
+                console.warn("Sheets fetch failed, using cache:", err);
+                state.programData = JSON.parse(localStorage.getItem('fitpro_cached_prog')) || [];
+                document.getElementById('syncStatus').innerText = "⚠️ Çevrimdışı (Önbellek)";
+            }
+            renderExercises();
+        }
+
+        function renderExercises() {
+            const container = document.getElementById('exerciseList');
+            const timerBar = document.getElementById('timerBar');
+            const cardioSection = document.getElementById('cardioSection');
+            const completeBtn = document.getElementById('completeBtnContainer');
+            const targetBadge = document.getElementById('targetDurationBadge');
+
+            container.innerHTML = '';
+
+            const dayRows = state.programData.filter(r => r.Gun === state.activeDay);
+
+            // DINLENME GÜNÜ
+            if (dayRows.length === 0) {
+                document.getElementById('workoutTitle').innerText = "Dinlenme & Aktif Toparlanma";
+                document.getElementById('workoutDesc').innerText = "Bugün kas onarımı için tam dinlenme günü.";
+                targetBadge.innerHTML = `<i class="fa-solid fa-bed mr-1 text-brand-500"></i> Tam Toparlanma`;
+
+                container.innerHTML = `
+                    <div class="bg-cardbg border border-slate-800 p-6 rounded-2xl text-center space-y-2 shadow-lg">
+                        <i class="fa-solid fa-bed text-3xl text-brand-500 mb-1"></i>
+                        <h3 class="text-sm font-bold text-white">Harika Bir Dinlenme Günü!</h3>
+                        <p class="text-xs text-slate-400 leading-relaxed">Merkezi sinir sistemi ve kas liflerinin onarım günü. Ağırlık ve bisiklet yok.</p>
+                    </div>
+                `;
+
+                timerBar.classList.add('hidden');
+                cardioSection.classList.add('hidden');
+                completeBtn.classList.add('hidden');
+                return;
+            }
+
+            // ANTRENMAN GÜNÜ
+            timerBar.classList.remove('hidden');
+            completeBtn.classList.remove('hidden');
+            document.getElementById('workoutTitle').innerText = `${state.activeDay} Antrenmanı`;
+            document.getElementById('workoutDesc').innerText = "Süperset tempolu tam vücut uyarımı.";
+            targetBadge.innerHTML = `<i class="fa-regular fa-clock mr-1 text-brand-500"></i> 30 Dk Güç + Kardiyo`;
+
+            // KRİTİK AYRIŞTIRMA: KARDİYO SATIRLARINI DAMBIL LİSTESİNDEN ÇIKAR
+            const weightRows = dayRows.filter(r => {
+                const isCardioGroup = (r.Superset_Grup || '').toUpperCase() === 'KARDİYO';
+                const isBike = (r.Egzersiz_Adi || '').toLowerCase().includes('bisiklet');
+                return !isCardioGroup && !isBike;
+            });
+
+            const cardioRows = dayRows.filter(r => {
+                const isCardioGroup = (r.Superset_Grup || '').toUpperCase() === 'KARDİYO';
+                const isBike = (r.Egzersiz_Adi || '').toLowerCase().includes('bisiklet');
+                return isCardioGroup || isBike;
+            });
+
+            // 1. AĞIRLIK HAREKETLERİNİ ÇİZ
+            const groups = {};
+            weightRows.forEach(row => {
+                const g = row.Superset_Grup || 'Tekil';
+                if (!groups[g]) groups[g] = [];
+                groups[g].push(row);
+            });
+
+            Object.keys(groups).forEach(grpKey => {
+                const groupItems = groups[grpKey];
+                let groupHTML = `
+                    <div class="bg-cardbg border border-slate-800 rounded-2xl p-3.5 space-y-3 shadow-md">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <span class="text-xs font-bold text-brand-400 tracking-wide uppercase"><i class="fa-solid fa-bolt mr-1"></i> ${grpKey}</span>
+                            <span class="text-[10px] bg-slate-900 text-slate-400 px-2 py-0.5 rounded border border-slate-800">${groupItems.length} Hareket</span>
+                        </div>
+                `;
+
+                groupItems.forEach((ex) => {
+                    groupHTML += `
+                        <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl space-y-2">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="text-xs font-bold text-slate-100">${ex.Egzersiz_Adi}</h4>
+                                    <p class="text-[10px] text-brand-400">${ex.Hedef_Kas}</p>
+                                </div>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${ex.Hedef_Set} Set x ${ex.Hedef_Tekrar}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 bg-slate-950 p-1.5 rounded flex items-center gap-1">
+                                <i class="fa-solid fa-shield text-blue-400"></i> ${ex.Postur_Etkisi}
+                            </div>
+                            <div class="pt-1 space-y-1.5">
+                    `;
+
+                    for (let s = 1; s <= ex.Hedef_Set; s++) {
+                        groupHTML += `
+                            <div class="flex items-center gap-2 text-xs">
+                                <span class="text-[10px] text-slate-500 font-mono w-7">S${s}:</span>
+                                <input type="number" placeholder="kg" value="${ex.Varsayilan_Kg || ''}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="number" placeholder="tekrar" value="${ex.Hedef_Tekrar}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <label class="flex items-center gap-1 cursor-pointer ml-auto">
+                                    <input type="checkbox" onchange="triggerTimerOnSet(this)" id="chk_${ex.Sira}_${s}" class="w-4 h-4 rounded text-brand-500 bg-slate-950 border-slate-800">
+                                </label>
+                            </div>
+                        `;
+                    }
+
+                    groupHTML += `</div></div>`;
+                });
+
+                groupHTML += `</div>`;
+                container.innerHTML += groupHTML;
+            });
+
+            // 2. ALTTTAKİ ŞIK BİSİKLET KARTINI BAĞLA
+            if (cardioRows.length > 0) {
+                const c = cardioRows[0];
+                cardioSection.classList.remove('hidden');
+                document.getElementById('cardioTitle').innerText = `${c.Hedef_Tekrar} ${c.Egzersiz_Adi}`;
+                document.getElementById('cardioDesc').innerText = `${c.Hedef_Kas} • ${c.Postur_Etkisi}`;
+                document.getElementById('cardioCheck').checked = false;
+            } else {
+                cardioSection.classList.add('hidden');
+            }
+        }
+
+        // --- TIMER ---
+        function startTimer(sec) {
+            clearInterval(timerInterval);
+            let rem = sec;
+            updateTimerDisplay(rem);
+            timerInterval = setInterval(() => {
+                rem--;
+                updateTimerDisplay(rem);
+                if (rem <= 0) {
+                    clearInterval(timerInterval);
+                    playBeep();
+                }
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            updateTimerDisplay(45);
+        }
+
+        function updateTimerDisplay(sec) {
+            const m = Math.floor(sec / 60).toString().padStart(2, '0');
+            const s = (sec % 60).toString().padStart(2, '0');
+            document.getElementById('timerDisplay').innerText = `${m}:${s}`;
+        }
+
+        function triggerTimerOnSet(cb) {
+            if (cb.checked) startTimer(45);
+        }
+
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                osc.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            } catch(e) {}
+        }
+
+        // --- COMPLETE WORKOUT ---
+        async function completeAndSaveWorkout() {
+            const dayRows = state.programData.filter(r => r.Gun === state.activeDay);
+            const weightRows = dayRows.filter(r => {
+                const isCardioGroup = (r.Superset_Grup || '').toUpperCase() === 'KARDİYO';
+                const isBike = (r.Egzersiz_Adi || '').toLowerCase().includes('bisiklet');
+                return !isCardioGroup && !isBike;
+            });
+            const cardioRows = dayRows.filter(r => {
+                const isCardioGroup = (r.Superset_Grup || '').toUpperCase() === 'KARDİYO';
+                const isBike = (r.Egzersiz_Adi || '').toLowerCase().includes('bisiklet');
+                return isCardioGroup || isBike;
+            });
+
+            const setsToLog = [];
+            weightRows.forEach(ex => {
+                for (let s = 1; s <= ex.Hedef_Set; s++) {
+                    const wInput = document.getElementById(`w_${ex.Sira}_${s}`);
+                    const rInput = document.getElementById(`r_${ex.Sira}_${s}`);
+                    const cInput = document.getElementById(`chk_${ex.Sira}_${s}`);
+
+                    if (wInput && rInput) {
+                        setsToLog.push({
+                            exerciseName: ex.Egzersiz_Adi,
+                            setNo: s,
+                            weight: parseFloat(wInput.value) || 0,
+                            reps: parseInt(rInput.value) || 0,
+                            done: cInput ? cInput.checked : false
+                        });
+                    }
+                }
+            });
+
+            // Kardiyo süresi hesaplama: Tik atıldıysa tablodaki süreyi (30) al, atılmadıysa 0
+            let cardioMinutes = 0;
+            const cardioChecked = document.getElementById('cardioCheck').checked;
+            if (cardioChecked && cardioRows.length > 0) {
+                const match = ("" + cardioRows[0].Hedef_Tekrar).match(/\d+/);
+                cardioMinutes = match ? parseInt(match[0]) : 30;
+            }
+
+            const payload = {
+                action: "logWorkout",
+                programTitle: `${state.activeDay} Antrenmanı`,
+                cardioMinutes: cardioMinutes,
+                sets: setsToLog
+            };
+
+            document.getElementById('syncStatus').innerText = "⏳ Tabloya yazılıyor...";
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                document.getElementById('syncStatus').innerText = "● Başarıyla Kaydedildi";
+                alert("Harika! Antrenman ve bisiklet verileriniz Google Sheets tablonuza işlendi.");
+            } catch (err) {
+                console.error("Save error", err);
+                document.getElementById('syncStatus').innerText = "⚠️ Yerel Saklandı";
+                alert("Bağlantı hatası oluştu, verileriniz cihazınızda güvende.");
+            }
+        }
+
+        // --- SUPPLEMENTS ---
+        function renderSupplements() {
+            const container = document.getElementById('supplementList');
+            container.innerHTML = state.supplements.map((sup, idx) => `
+                <div class="bg-cardbg p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between shadow-md">
+                    <div class="space-y-0.5">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-white">${sup.name}</span>
+                            <span class="text-[10px] bg-slate-900 text-brand-400 px-2 py-0.5 rounded border border-slate-800 font-mono">${sup.dose}</span>
+                        </div>
+                        <div class="text-[10px] text-amber-400"><i class="fa-regular fa-clock mr-1"></i> ${sup.time}</div>
+                        <div class="text-[10px] text-slate-400">${sup.reason}</div>
+                    </div>
+                    <button onclick="toggleSupplement(${idx})" class="w-8 h-8 rounded-xl flex items-center justify-center transition ${sup.taken ? 'bg-brand-600 text-white' : 'bg-slate-900 text-slate-600 border border-slate-800'}">
+                        <i class="fa-solid fa-check text-sm"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function toggleSupplement(idx) {
+            state.supplements[idx].taken = !state.supplements[idx].taken;
+            localStorage.setItem('fitpro_supps', JSON.stringify(state.supplements));
+            renderSupplements();
+
+            if (state.supplements[idx].taken) {
+                try {
+                    await fetch(API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "logSupplement",
+                            supplementName: state.supplements[idx].name,
+                            scheduledTime: state.supplements[idx].time
+                        })
+                    });
+                } catch(e) {}
+            }
+        }
+
+        // --- WATER & YAZIO ---
+        function addWater(amount) {
+            state.water += amount;
+            localStorage.setItem('fitpro_water', state.water);
+            document.getElementById('waterDisplay').innerText = state.water;
+        }
+
+        async function saveDailyNutrition() {
+            const cal = parseInt(document.getElementById('macroCal').value) || 0;
+            const prot = parseInt(document.getElementById('macroProt').value) || 0;
+            const carb = parseInt(document.getElementById('macroCarb').value) || 0;
+            const fat = parseInt(document.getElementById('macroFat').value) || 0;
+
+            const payload = {
+                action: "logDailySummary",
+                calories: cal,
+                protein: prot,
+                carbs: carb,
+                fat: fat,
+                water: state.water
+            };
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                alert("Yazıo ve su verileriniz Google Sheets tablonuza kaydedildi!");
+            } catch(e) {
+                alert("Bağlantı hatası, veriler kaydedilemedi.");
+            }
+        }
+
+        // --- METRICS ---
+        async function saveBodyMetric() {
+            const w = parseFloat(document.getElementById('mWeight').value);
+            const waist = parseFloat(document.getElementById('mWaist').value);
+            const chest = parseFloat(document.getElementById('mChest').value) || null;
+            const arm = parseFloat(document.getElementById('mArm').value) || null;
+
+            if (!w || !waist) {
+                alert("Lütfen kilo ve bel ölçüsünü girin.");
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = `${now.getDate()} ${now.toLocaleString('tr-TR', { month: 'short' })}`;
+            state.metrics.push({ date: dateStr, weight: w, waist: waist });
+            localStorage.setItem('fitpro_metrics', JSON.stringify(state.metrics));
+
+            updateChart();
+
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: "logMetric",
+                        weight: w,
+                        waist: waist,
+                        chest: chest,
+                        arm: arm
+                    })
+                });
+                alert("Ölçüm başarıyla kaydedildi!");
+            } catch(e) {}
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('metricsChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: state.metrics.map(m => m.date),
+                    datasets: [
+                        { label: 'Kilo (kg)', data: state.metrics.map(m => m.weight), borderColor: '#10b981', tension: 0.3 },
+                        { label: 'Bel (cm)', data: state.metrics.map(m => m.waist), borderColor: '#3b82f6', tension: 0.3 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 10 } } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#94a3b8', font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            if (!chartInstance) return;
+            chartInstance.data.labels = state.metrics.map(m => m.date);
+            chartInstance.data.datasets[0].data = state.metrics.map(m => m.weight);
+            chartInstance.data.datasets[1].data = state.metrics.map(m => m.waist);
+            chartInstance.update();
+        }
+    </script>
+</body>
+</html>
