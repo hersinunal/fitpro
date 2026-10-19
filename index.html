@@ -410,7 +410,7 @@
             fetchProgramFromSheets();
             renderSupplements();
             initChart();
-            processSyncQueue(); // Bekleyen çevrimdışı kuyruğu varsa gönder
+            processSyncQueue();
         }
 
         function initDay() {
@@ -479,7 +479,7 @@
 
             const dayRows = state.programData.filter(r => r.Gun === state.activeDay);
 
-            // TAM DİNLENME GÜNÜ (Salı, Perşembe, Pazar)
+            // TAM DİNLENME GÜNÜ
             if (dayRows.length === 0) {
                 document.getElementById('workoutTitle').innerText = "Dinlenme & Aktif Toparlanma";
                 document.getElementById('workoutDesc').innerText = "Bugün kas onarımı için tam dinlenme günü.";
@@ -499,7 +499,7 @@
                 return;
             }
 
-            // ANTRENMAN GÜNÜ (Pzt, Çar, Cuma, Cmt)
+            // ANTRENMAN GÜNÜ
             timerBar.classList.remove('hidden');
             completeBtn.classList.remove('hidden');
             document.getElementById('workoutTitle').innerText = `${state.activeDay} Antrenmanı`;
@@ -537,6 +537,18 @@
                 `;
 
                 groupItems.forEach((ex) => {
+                    // Hedef tekrar sayısını güvenle al
+                    let rawReps = ("" + (ex.Hedef_Tekrar || "")).trim();
+                    let defaultRep = "";
+                    let repMatches = rawReps.match(/\d+/g);
+                    if (repMatches && repMatches.length > 0) {
+                        defaultRep = repMatches[repMatches.length - 1]; // "8-10" ise 10, "10-12" ise 12, "45sn" ise 45
+                    }
+
+                    // Varsayılan kg değerini güvenle al
+                    let rawKg = ("" + (ex.Varsayilan_Kg !== undefined ? ex.Varsayilan_Kg : "")).trim();
+                    let defaultKg = rawKg !== "" && !isNaN(rawKg) ? rawKg : "";
+
                     groupHTML += `
                         <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl space-y-2">
                             <div class="flex justify-between items-start">
@@ -544,7 +556,7 @@
                                     <h4 class="text-xs font-bold text-slate-100">${ex.Egzersiz_Adi}</h4>
                                     <p class="text-[10px] text-brand-400">${ex.Hedef_Kas}</p>
                                 </div>
-                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${ex.Hedef_Set} Set x ${ex.Hedef_Tekrar}</span>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${ex.Hedef_Set} Set x ${rawReps}</span>
                             </div>
                             <div class="text-[10px] text-slate-400 bg-slate-950 p-1.5 rounded flex items-center gap-1">
                                 <i class="fa-solid fa-shield text-blue-400"></i> ${ex.Postur_Etkisi}
@@ -556,8 +568,8 @@
                         groupHTML += `
                             <div class="flex items-center gap-2 text-xs">
                                 <span class="text-[10px] text-slate-500 font-mono w-7">S${s}:</span>
-                                <input type="number" placeholder="kg" value="${ex.Varsayilan_Kg || ''}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
-                                <input type="number" placeholder="tekrar" value="${ex.Hedef_Tekrar}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="number" step="0.5" placeholder="kg" value="${defaultKg}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="number" placeholder="tekrar" value="${defaultRep}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
                                 <label class="flex items-center gap-1 cursor-pointer ml-auto">
                                     <input type="checkbox" onchange="triggerTimerOnSet(this)" id="chk_${ex.Sira}_${s}" class="w-4 h-4 rounded text-brand-500 bg-slate-950 border-slate-800">
                                 </label>
@@ -680,11 +692,22 @@
                     const cInput = document.getElementById(`chk_${ex.Sira}_${s}`);
 
                     if (wInput && rInput) {
+                        let parsedWeight = parseFloat(wInput.value);
+                        if (isNaN(parsedWeight)) {
+                            parsedWeight = parseFloat(ex.Varsayilan_Kg) || 0;
+                        }
+
+                        let parsedReps = parseInt(rInput.value);
+                        if (isNaN(parsedReps)) {
+                            let matches = ("" + ex.Hedef_Tekrar).match(/\d+/g);
+                            parsedReps = matches ? parseInt(matches[matches.length - 1]) : 10;
+                        }
+
                         setsToLog.push({
                             exerciseName: ex.Egzersiz_Adi,
                             setNo: s,
-                            weight: parseFloat(wInput.value) || 0,
-                            reps: parseInt(rInput.value) || 0,
+                            weight: parsedWeight,
+                            reps: parsedReps,
                             done: cInput ? cInput.checked : false
                         });
                     }
