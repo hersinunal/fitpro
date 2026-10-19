@@ -449,15 +449,22 @@
             if (tabId === 'metrics') updateChart();
         }
 
-        // --- SHEETS VERİ ÇEKME ---
+        // --- SHEETS VERİ ÇEKME (ZORLA TEMİZLEME DESTEKLİ) ---
         async function fetchProgramFromSheets() {
             document.getElementById('syncStatus').innerText = "⏳ Veriler alınıyor...";
             try {
-                const res = await fetch(`${API_URL}?action=getProgram`);
+                const res = await fetch(`${API_URL}?action=getProgram&nocache=${Date.now()}`);
                 const json = await res.json();
                 if (json.status === "success" && json.data.length > 0) {
-                    state.programData = json.data;
-                    localStorage.setItem('fitpro_cached_prog', JSON.stringify(json.data));
+                    // Header'lardaki olası gizli boşlukları normalize edelim
+                    state.programData = json.data.map(row => {
+                        let cleanObj = {};
+                        for (let k in row) {
+                            cleanObj[k.trim()] = row[k];
+                        }
+                        return cleanObj;
+                    });
+                    localStorage.setItem('fitpro_cached_prog', JSON.stringify(state.programData));
                     document.getElementById('syncStatus').innerText = "● Tablo Güncel";
                 }
             } catch (err) {
@@ -466,6 +473,17 @@
                 document.getElementById('syncStatus').innerText = "⚠️ Çevrimdışı (Önbellek)";
             }
             renderExercises();
+        }
+
+        // Güvenli Sayı Ayıklama Fonksiyonu ("8-10" -> 10, "10-12" -> 12, "45sn" -> 45)
+        function getSafeRepNumber(rawStr) {
+            if (!rawStr) return "10";
+            const str = ("" + rawStr).trim();
+            const nums = str.match(/\d+/g);
+            if (nums && nums.length > 0) {
+                return nums[nums.length - 1]; // Aralığın üst limitini varsayılan yapar
+            }
+            return "10";
         }
 
         function renderExercises() {
@@ -477,7 +495,7 @@
 
             container.innerHTML = '';
 
-            const dayRows = state.programData.filter(r => r.Gun === state.activeDay);
+            const dayRows = state.programData.filter(r => (r.Gun || '').trim().toLowerCase() === state.activeDay.trim().toLowerCase());
 
             // TAM DİNLENME GÜNÜ
             if (dayRows.length === 0) {
@@ -537,17 +555,15 @@
                 `;
 
                 groupItems.forEach((ex) => {
-                    // Hedef tekrar sayısını güvenle al
-                    let rawReps = ("" + (ex.Hedef_Tekrar || "")).trim();
-                    let defaultRep = "";
-                    let repMatches = rawReps.match(/\d+/g);
-                    if (repMatches && repMatches.length > 0) {
-                        defaultRep = repMatches[repMatches.length - 1]; // "8-10" ise 10, "10-12" ise 12, "45sn" ise 45
+                    const rawReps = ("" + (ex.Hedef_Tekrar || "")).trim();
+                    const defaultRep = getSafeRepNumber(rawReps);
+                    
+                    let defaultKg = "";
+                    if (ex.Varsayilan_Kg !== undefined && ex.Varsayilan_Kg !== null && ("" + ex.Varsayilan_Kg).trim() !== "") {
+                        defaultKg = ("" + ex.Varsayilan_Kg).trim();
                     }
 
-                    // Varsayılan kg değerini güvenle al
-                    let rawKg = ("" + (ex.Varsayilan_Kg !== undefined ? ex.Varsayilan_Kg : "")).trim();
-                    let defaultKg = rawKg !== "" && !isNaN(rawKg) ? rawKg : "";
+                    const setCount = parseInt(ex.Hedef_Set) || 3;
 
                     groupHTML += `
                         <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl space-y-2">
@@ -556,7 +572,7 @@
                                     <h4 class="text-xs font-bold text-slate-100">${ex.Egzersiz_Adi}</h4>
                                     <p class="text-[10px] text-brand-400">${ex.Hedef_Kas}</p>
                                 </div>
-                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${ex.Hedef_Set} Set x ${rawReps}</span>
+                                <span class="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded font-mono">${setCount} Set x ${rawReps}</span>
                             </div>
                             <div class="text-[10px] text-slate-400 bg-slate-950 p-1.5 rounded flex items-center gap-1">
                                 <i class="fa-solid fa-shield text-blue-400"></i> ${ex.Postur_Etkisi}
@@ -564,12 +580,12 @@
                             <div class="pt-1 space-y-1.5">
                     `;
 
-                    for (let s = 1; s <= ex.Hedef_Set; s++) {
+                    for (let s = 1; s <= setCount; s++) {
                         groupHTML += `
                             <div class="flex items-center gap-2 text-xs">
                                 <span class="text-[10px] text-slate-500 font-mono w-7">S${s}:</span>
-                                <input type="number" step="0.5" placeholder="kg" value="${defaultKg}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
-                                <input type="number" placeholder="tekrar" value="${defaultRep}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="text" inputmode="decimal" placeholder="kg" value="${defaultKg}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="text" inputmode="numeric" placeholder="tekrar" value="${defaultRep}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
                                 <label class="flex items-center gap-1 cursor-pointer ml-auto">
                                     <input type="checkbox" onchange="triggerTimerOnSet(this)" id="chk_${ex.Sira}_${s}" class="w-4 h-4 rounded text-brand-500 bg-slate-950 border-slate-800">
                                 </label>
@@ -672,7 +688,7 @@
 
         // --- ANTRENMAN KAYIT ---
         function completeAndSaveWorkout() {
-            const dayRows = state.programData.filter(r => r.Gun === state.activeDay);
+            const dayRows = state.programData.filter(r => (r.Gun || '').trim().toLowerCase() === state.activeDay.trim().toLowerCase());
             const weightRows = dayRows.filter(r => {
                 const isCardioGroup = (r.Superset_Grup || '').toUpperCase() === 'KARDİYO';
                 const isBike = (r.Egzersiz_Adi || '').toLowerCase().includes('bisiklet');
@@ -686,7 +702,8 @@
 
             const setsToLog = [];
             weightRows.forEach(ex => {
-                for (let s = 1; s <= ex.Hedef_Set; s++) {
+                const setCount = parseInt(ex.Hedef_Set) || 3;
+                for (let s = 1; s <= setCount; s++) {
                     const wInput = document.getElementById(`w_${ex.Sira}_${s}`);
                     const rInput = document.getElementById(`r_${ex.Sira}_${s}`);
                     const cInput = document.getElementById(`chk_${ex.Sira}_${s}`);
@@ -699,8 +716,7 @@
 
                         let parsedReps = parseInt(rInput.value);
                         if (isNaN(parsedReps)) {
-                            let matches = ("" + ex.Hedef_Tekrar).match(/\d+/g);
-                            parsedReps = matches ? parseInt(matches[matches.length - 1]) : 10;
+                            parsedReps = parseInt(getSafeRepNumber(ex.Hedef_Tekrar));
                         }
 
                         setsToLog.push({
@@ -877,6 +893,8 @@
         }
 
         function syncAllWithSheets() {
+            // Önbelleği temizleyip zorla yeni çekim yaptırıyoruz
+            localStorage.removeItem('fitpro_cached_prog');
             fetchProgramFromSheets();
             processSyncQueue();
         }
