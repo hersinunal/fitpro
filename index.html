@@ -45,9 +45,7 @@
             20%, 60% { transform: translateX(-8px); }
             40%, 80% { transform: translateX(8px); }
         }
-        .animate-shake {
-            animation: shake 0.4s ease-in-out;
-        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
     </style>
 </head>
 <body class="bg-darkbg text-slate-100 min-h-screen">
@@ -171,7 +169,7 @@
                     <div class="text-center py-8 text-xs text-slate-500">Egzersizler yükleniyor...</div>
                 </div>
 
-                <!-- TEK VE ŞIK KARDİYO KARTI -->
+                <!-- KARDİYO KARTI -->
                 <div id="cardioSection" class="hidden bg-cardbg border border-slate-800 p-4 rounded-2xl space-y-2 shadow-xl">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -197,7 +195,7 @@
                 </div>
             </section>
 
-            <!-- VIEW 2: SUPPLEMENTS & DETOKS -->
+            <!-- VIEW 2: SUPPLEMENTS & DETOKS (ÇİFT YÖNLÜ TEYİTLİ) -->
             <section id="view-supplements" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
@@ -206,19 +204,21 @@
                         </h2>
                         <p class="text-[11px] text-slate-400 mt-0.5" id="suppDateDisplay">Bugün</p>
                     </div>
-                    <span class="text-[10px] bg-slate-900 border border-slate-800 text-slate-400 px-2 py-1 rounded-lg">Her Gece Sıfırlanır</span>
+                    <button onclick="fetchTodaySupplementsFromSheets()" class="px-2 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-[10px] border border-slate-800 flex items-center gap-1">
+                        <i class="fa-solid fa-rotate text-brand-500"></i> Tablodan Oku
+                    </button>
                 </div>
                 <div class="space-y-3" id="supplementList"></div>
             </section>
 
-            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN LOGLARI - AKORDİYON LİSTE) -->
+            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN LOGLARI - HEPSİ KAPALI AKORDİYON) -->
             <section id="view-history" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
                             <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Antrenman Geçmişi & Ağırlıklar
                         </h2>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Tarihe tıklayarak set ve kiloları inceleyin</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Tarihe tıklayarak detayları açın</p>
                     </div>
                     <button onclick="fetchHistoryFromSheets()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-xs border border-slate-700 flex items-center gap-1">
                         <i class="fa-solid fa-arrows-rotate text-brand-500 text-[10px]"></i> Yenile
@@ -318,7 +318,7 @@
 
         </main>
 
-        <!-- Bottom Navigation Bar (5 Buton: Antrenman, Geçmiş, Takviye, Beslenme, Ölçümler) -->
+        <!-- Bottom Navigation Bar (5 Buton) -->
         <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-40 px-2 py-2">
             <div class="max-w-md mx-auto grid grid-cols-5 text-center text-xs">
                 <button onclick="switchTab('workout')" id="nav-workout" class="nav-btn active flex flex-col items-center gap-1 text-brand-500">
@@ -396,7 +396,7 @@
         let timerInterval = null;
         let chartInstance = null;
 
-        // --- AUTH & INITIALIZATION ---
+        // --- AUTH & INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             const isAuth = localStorage.getItem('fitpro_authenticated');
             if (isAuth === 'true') {
@@ -475,6 +475,7 @@
             initWaterForToday();
             fetchProgramFromSheets();
             renderSupplements();
+            fetchTodaySupplementsFromSheets(); // Tablodan bugünkü onayları anında çek
             processSyncQueue();
         }
 
@@ -519,6 +520,7 @@
             }
             if (tabId === 'metrics') renderChartSafely();
             if (tabId === 'history') fetchHistoryFromSheets();
+            if (tabId === 'supplements') fetchTodaySupplementsFromSheets();
         }
 
         async function fetchProgramFromSheets() {
@@ -684,7 +686,7 @@
             }
         }
 
-        // --- GEÇMİŞ (HISTORY) - HEPSİ KAPALI AKORDİYON ---
+        // --- GEÇMİŞ (HISTORY) ---
         async function fetchHistoryFromSheets() {
             const container = document.getElementById('historyList');
             if (!container) return;
@@ -786,7 +788,7 @@
                     </span>
                 ` : '';
 
-                // TÜM KARTLAR BAŞLANGIÇTA KAPALI ('hidden') GELİR
+                // TÜM KARTLAR BAŞLANGIÇTA KAPALI
                 container.innerHTML += `
                     <div class="bg-cardbg border border-slate-800 rounded-2xl overflow-hidden shadow-md">
                         <div onclick="toggleHistoryCard('${idx}')" class="p-3.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition">
@@ -961,17 +963,17 @@
             };
 
             addToSyncQueue(payload);
-            alert("Harika! Antrenman ve bisiklet verileriniz kaydedildi ve tabloyla eşitleniyor.");
+            alert("Harika! Antrenman verileriniz Google Sheets tablonuza işlendi.");
         }
 
-        // --- SUPPLEMENTS (GREEN & RED DETOKS OTOMATİK ENJEKTE EDİCİ) ---
+        // --- SUPPLEMENTS (ÇİFT YÖNLÜ TABLO DOĞRULAMALI) ---
         function getTodaySupps() {
             const key = `fitpro_supps_${getTodayKey()}`;
             const stored = localStorage.getItem(key);
             
             if (stored) {
                 let current = JSON.parse(stored);
-                // Eğer telefondaki eski listede Green Detoks eksikse yeni listeyle birleştir
+                // Eksik olan Green/Red detoksları listeye otomatik ekle
                 const hasGreen = current.some(s => s.id === "green_detox");
                 if (!hasGreen) {
                     current = MASTER_SUPPLEMENTS.map(master => {
@@ -985,6 +987,35 @@
                 const initial = MASTER_SUPPLEMENTS.map(s => ({ ...s, taken: false }));
                 localStorage.setItem(key, JSON.stringify(initial));
                 return initial;
+            }
+        }
+
+        // Google Sheets'ten bugünkü onayları çeker ve kutucukları otomatik yeşil yapar
+        async function fetchTodaySupplementsFromSheets() {
+            try {
+                const res = await fetch(`${API_URL}?action=getTodayStatus&nocache=${Date.now()}`);
+                const json = await res.json();
+                if (json.status === "success" && json.takenSupplements) {
+                    const key = `fitpro_supps_${getTodayKey()}`;
+                    const current = getTodaySupps();
+                    
+                    let changed = false;
+                    current.forEach(item => {
+                        if (json.takenSupplements.includes(item.name)) {
+                            if (!item.taken) {
+                                item.taken = true;
+                                changed = true;
+                            }
+                        }
+                    });
+                    
+                    if (changed) {
+                        localStorage.setItem(key, JSON.stringify(current));
+                        renderSupplements();
+                    }
+                }
+            } catch(e) {
+                console.warn("Bugünkü supplement durumu tablodan okunamadı:", e);
             }
         }
 
@@ -1129,6 +1160,7 @@
         function syncAllWithSheets() {
             localStorage.removeItem('fitpro_cached_prog');
             fetchProgramFromSheets();
+            fetchTodaySupplementsFromSheets();
             processSyncQueue();
         }
     </script>
