@@ -36,7 +36,7 @@
             -webkit-tap-highlight-color: transparent;
             user-select: none;
         }
-        .pb-safe { padding-bottom: calc(5rem + env(safe-area-inset-bottom)); }
+        .pb-safe { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
@@ -197,12 +197,12 @@
                 </div>
             </section>
 
-            <!-- VIEW 2: SUPPLEMENTS -->
+            <!-- VIEW 2: SUPPLEMENTS (GREEN & RED DETOKS DAHİL) -->
             <section id="view-supplements" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-capsules text-brand-500"></i> Günlük Supplement Takibi
+                            <i class="fa-solid fa-capsules text-brand-500"></i> Günlük Takviye & Detoks Protokolü
                         </h2>
                         <p class="text-[11px] text-slate-400 mt-0.5" id="suppDateDisplay">Bugün</p>
                     </div>
@@ -211,7 +211,25 @@
                 <div class="space-y-3" id="supplementList"></div>
             </section>
 
-            <!-- VIEW 3: NUTRITION & WATER (YAZIO) -->
+            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN VE KİLO/TEKRAR LOGLARI) -->
+            <section id="view-history" class="app-view hidden space-y-4">
+                <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
+                    <div>
+                        <h2 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Antrenman Geçmişi & Ağırlıklar
+                        </h2>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Google E-Tablo Antrenman_Log kayıtları</p>
+                    </div>
+                    <button onclick="fetchHistoryFromSheets()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-xs border border-slate-700 flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-rotate text-brand-500 text-[10px]"></i> Yenile
+                    </button>
+                </div>
+                <div id="historyList" class="space-y-3">
+                    <div class="text-center py-8 text-xs text-slate-500">Geçmiş antrenmanlar yükleniyor...</div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: NUTRITION & WATER (YAZIO) -->
             <section id="view-nutrition" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-md flex justify-between items-center">
                     <div class="flex items-center space-x-3">
@@ -260,7 +278,7 @@
                 </div>
             </section>
 
-            <!-- VIEW 4: METRICS & GRAPHS -->
+            <!-- VIEW 5: METRICS & GRAPHS -->
             <section id="view-metrics" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 space-y-3">
                     <h3 class="text-xs font-bold text-slate-200 flex items-center gap-2">
@@ -300,24 +318,28 @@
 
         </main>
 
-        <!-- Bottom Navigation Bar -->
-        <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-40 px-4 py-2">
-            <div class="max-w-md mx-auto flex justify-between items-center text-xs">
+        <!-- Bottom Navigation Bar (5 Buton: Antrenman, Geçmiş, Supplement, Beslenme, Ölçümler) -->
+        <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-40 px-2 py-2">
+            <div class="max-w-md mx-auto grid grid-cols-5 text-center text-xs">
                 <button onclick="switchTab('workout')" id="nav-workout" class="nav-btn active flex flex-col items-center gap-1 text-brand-500">
                     <i class="fa-solid fa-dumbbell text-base"></i>
-                    <span class="text-[10px]">Antrenman</span>
+                    <span class="text-[9px]">Antrenman</span>
+                </button>
+                <button onclick="switchTab('history')" id="nav-history" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
+                    <i class="fa-solid fa-clock-rotate-left text-base"></i>
+                    <span class="text-[9px]">Geçmiş</span>
                 </button>
                 <button onclick="switchTab('supplements')" id="nav-supplements" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
                     <i class="fa-solid fa-capsules text-base"></i>
-                    <span class="text-[10px]">Supplement</span>
+                    <span class="text-[9px]">Takviye</span>
                 </button>
                 <button onclick="switchTab('nutrition')" id="nav-nutrition" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
                     <i class="fa-solid fa-utensils text-base"></i>
-                    <span class="text-[10px]">Beslenme</span>
+                    <span class="text-[9px]">Beslenme</span>
                 </button>
                 <button onclick="switchTab('metrics')" id="nav-metrics" class="nav-btn flex flex-col items-center gap-1 text-slate-400 hover:text-slate-200">
                     <i class="fa-solid fa-chart-line text-base"></i>
-                    <span class="text-[10px]">Ölçümler</span>
+                    <span class="text-[9px]">Ölçümler</span>
                 </button>
             </div>
         </nav>
@@ -328,10 +350,12 @@
         const APP_PIN = "1903";
         const API_URL = "https://script.google.com/macros/s/AKfycbyb-VkwvpK6OIM5-u6WyZzuiZL_NVHLhH4_paCD3_ohFtilzzea17mazF6eUfk_aLY84g/exec";
 
-        // PDF Raporuna Birebir Uygun Supplement Envanteri
+        // Green Detoks & Red Detoks Eklenmiş Günlük Takviye Listesi
         const MASTER_SUPPLEMENTS = [
             { id: "d3k2", name: "Vitamin D3 + K2", dose: "2000-4000 IU", time: "12:30 (Öğle Yemeği)", reason: "Testosteron & immünite (Yağlı öğünle emilim)" },
             { id: "omega", name: "Omega-3 (EPA + DHA)", dose: "1500-2000 mg", time: "12:30 (Öğle Yemeği)", reason: "Damar esnekliği & kas toparlanması" },
+            { id: "green_detox", name: "Green Detoks", dose: "1 Bardak / Porsiyon", time: "13:00 (Öğle)", reason: "Hücresel arınma, klorofil & alkali sindirim desteği" },
+            { id: "red_detox", name: "Red Detoks", dose: "1 Bardak / Porsiyon", time: "16:30 (İkindi)", reason: "Nitrik oksit (NO) artışı, damar genişlemesi & antrenman öncesi enerji" },
             { id: "bcaa", name: "BCAA", dose: "1 Ölçek (5-10g)", time: "20:15 (Antrenman İçi)", reason: "500 ml suya karıştırılır; yorgunluk ve kas hasarını azaltır" },
             { id: "post_shake", name: "Whey + Kreatin (5g) + Glutamin (5g)", dose: "1 Shaker", time: "21:30 (Antrenman Sonu)", reason: "Gece kas protein sentezi (mTOR) & hücresel dolum" },
             { id: "mag", name: "Magnezyum Bisglisinat", dose: "250-350 mg", time: "22:45 (Yatmadan 45 Dk)", reason: "Sempatik sistemi yatıştırma, HRV koruma & Derin Uyku" }
@@ -340,6 +364,7 @@
         let state = {
             activeDay: "Pazartesi",
             programData: [],
+            historyData: [],
             metrics: JSON.parse(localStorage.getItem('fitpro_metrics')) || [{ date: 'Başlangıç', weight: 110, waist: 108 }],
             water: 0
         };
@@ -447,16 +472,16 @@
                 activeBtn.classList.add('text-brand-500');
             }
             if (tabId === 'metrics') updateChart();
+            if (tabId === 'history') fetchHistoryFromSheets();
         }
 
-        // --- SHEETS VERİ ÇEKME (ZORLA TEMİZLEME DESTEKLİ) ---
+        // --- SHEETS VERİ ÇEKME (PROGRAM) ---
         async function fetchProgramFromSheets() {
             document.getElementById('syncStatus').innerText = "⏳ Veriler alınıyor...";
             try {
                 const res = await fetch(`${API_URL}?action=getProgram&nocache=${Date.now()}`);
                 const json = await res.json();
                 if (json.status === "success" && json.data.length > 0) {
-                    // Header'lardaki olası gizli boşlukları normalize edelim
                     state.programData = json.data.map(row => {
                         let cleanObj = {};
                         for (let k in row) {
@@ -475,13 +500,12 @@
             renderExercises();
         }
 
-        // Güvenli Sayı Ayıklama Fonksiyonu ("8-10" -> 10, "10-12" -> 12, "45sn" -> 45)
         function getSafeRepNumber(rawStr) {
             if (!rawStr) return "10";
             const str = ("" + rawStr).trim();
             const nums = str.match(/\d+/g);
             if (nums && nums.length > 0) {
-                return nums[nums.length - 1]; // Aralığın üst limitini varsayılan yapar
+                return nums[nums.length - 1];
             }
             return "10";
         }
@@ -497,7 +521,6 @@
 
             const dayRows = state.programData.filter(r => (r.Gun || '').trim().toLowerCase() === state.activeDay.trim().toLowerCase());
 
-            // TAM DİNLENME GÜNÜ
             if (dayRows.length === 0) {
                 document.getElementById('workoutTitle').innerText = "Dinlenme & Aktif Toparlanma";
                 document.getElementById('workoutDesc').innerText = "Bugün kas onarımı için tam dinlenme günü.";
@@ -517,7 +540,6 @@
                 return;
             }
 
-            // ANTRENMAN GÜNÜ
             timerBar.classList.remove('hidden');
             completeBtn.classList.remove('hidden');
             document.getElementById('workoutTitle').innerText = `${state.activeDay} Antrenmanı`;
@@ -536,7 +558,6 @@
                 return isCardioGroup || isBike;
             });
 
-            // 1. Ağırlık Egzersizleri
             const groups = {};
             weightRows.forEach(row => {
                 const g = row.Superset_Grup || 'Tekil';
@@ -600,7 +621,6 @@
                 container.innerHTML += groupHTML;
             });
 
-            // 2. Alttaki Kardiyo Kartı
             if (cardioRows.length > 0) {
                 const c = cardioRows[0];
                 cardioSection.classList.remove('hidden');
@@ -610,6 +630,117 @@
             } else {
                 cardioSection.classList.add('hidden');
             }
+        }
+
+        // --- SHEETS VERİ ÇEKME (GEÇMİŞ LOGLARI - HISTORY) ---
+        async function fetchHistoryFromSheets() {
+            const container = document.getElementById('historyList');
+            container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1 text-brand-500"></i> Google Tablodan geçmiş kayıtlar alınıyor...</div>';
+
+            try {
+                const res = await fetch(`${API_URL}?action=getHistory&nocache=${Date.now()}`);
+                const json = await res.json();
+                if (json.status === "success" && json.data.length > 0) {
+                    state.historyData = json.data;
+                    localStorage.setItem('fitpro_cached_history', JSON.stringify(json.data));
+                    renderHistory(json.data);
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500">Henüz kaydedilmiş antrenman bulunamadı.</div>';
+                }
+            } catch (err) {
+                console.warn("History fetch failed, using cache:", err);
+                const cached = JSON.parse(localStorage.getItem('fitpro_cached_history')) || [];
+                if (cached.length > 0) {
+                    renderHistory(cached);
+                } else {
+                    container.innerHTML = '<div class="text-center py-8 text-xs text-rose-400">Geçmiş veriler alınamadı. İnternet bağlantınızı kontrol edin.</div>';
+                }
+            }
+        }
+
+        function renderHistory(logs) {
+            const container = document.getElementById('historyList');
+            container.innerHTML = '';
+
+            // Tarih ve Programa göre grupla
+            const groups = {};
+            // En yeni tarih en üstte olsun diye ters çevir
+            [...logs].reverse().forEach(row => {
+                const rawDate = row.Tarih || 'Bilinmeyen Tarih';
+                // ISO formatını temizle (2026-10-19T... -> 2026-10-19)
+                const dStr = ("" + rawDate).split('T')[0];
+                const prog = row.Program_Adi || 'Antrenman';
+                const key = `${dStr}___${prog}`;
+
+                if (!groups[key]) {
+                    groups[key] = {
+                        date: dStr,
+                        program: prog,
+                        cardio: parseInt(row.Bisiklet_Dk) || 0,
+                        exercises: {}
+                    };
+                }
+
+                const exName = row.Egzersiz_Adi;
+                if (!groups[key].exercises[exName]) {
+                    groups[key].exercises[exName] = [];
+                }
+
+                groups[key].exercises[exName].push({
+                    setNo: row.Set_No,
+                    kg: row.Kilo_kg,
+                    reps: row.Tekrar,
+                    done: ("" + row.Tamamlandi).toUpperCase() === 'EVET'
+                });
+            });
+
+            const keys = Object.keys(groups);
+            if (keys.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500">Kayıtlı antrenman yok.</div>';
+                return;
+            }
+
+            keys.forEach(k => {
+                const session = groups[k];
+                let exHtml = '';
+
+                for (let ex in session.exercises) {
+                    const sets = session.exercises[ex];
+                    const setChips = sets.map(s => `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono ${s.done ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/40' : 'bg-slate-900 text-slate-400 border border-slate-800'}">
+                            S${s.setNo}: ${s.kg}kg × ${s.reps} ${s.done ? '✓' : ''}
+                        </span>
+                    `).join('');
+
+                    exHtml += `
+                        <div class="border-t border-slate-800/60 pt-2 first:border-0 first:pt-0">
+                            <div class="text-xs font-semibold text-slate-200">${ex}</div>
+                            <div class="flex flex-wrap gap-1.5 mt-1">${setChips}</div>
+                        </div>
+                    `;
+                }
+
+                const cardioBadge = session.cardio > 0 ? `
+                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                        <i class="fa-solid fa-person-biking text-xs"></i> ${session.cardio} Dk Bisiklet
+                    </span>
+                ` : '';
+
+                container.innerHTML += `
+                    <div class="bg-cardbg border border-slate-800 rounded-2xl p-4 shadow-lg space-y-3">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <span class="text-xs font-bold text-brand-400 uppercase tracking-wide">${session.program}</span>
+                                <div class="text-[11px] text-slate-400 font-mono mt-0.5"><i class="fa-regular fa-calendar mr-1"></i>${session.date}</div>
+                            </div>
+                            ${cardioBadge}
+                        </div>
+                        <div class="space-y-2 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                            ${exHtml}
+                        </div>
+                    </div>
+                `;
+            });
         }
 
         // --- TIMER ---
@@ -893,7 +1024,6 @@
         }
 
         function syncAllWithSheets() {
-            // Önbelleği temizleyip zorla yeni çekim yaptırıyoruz
             localStorage.removeItem('fitpro_cached_prog');
             fetchProgramFromSheets();
             processSyncQueue();
