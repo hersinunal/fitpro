@@ -197,7 +197,7 @@
                 </div>
             </section>
 
-            <!-- VIEW 2: SUPPLEMENTS (GREEN & RED DETOKS DAHİL) -->
+            <!-- VIEW 2: SUPPLEMENTS & DETOKS -->
             <section id="view-supplements" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
@@ -211,7 +211,7 @@
                 <div class="space-y-3" id="supplementList"></div>
             </section>
 
-            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN VE KİLO/TEKRAR LOGLARI) -->
+            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN LOGLARI) -->
             <section id="view-history" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
@@ -318,7 +318,7 @@
 
         </main>
 
-        <!-- Bottom Navigation Bar (5 Buton: Antrenman, Geçmiş, Supplement, Beslenme, Ölçümler) -->
+        <!-- Bottom Navigation Bar (5 Buton: Antrenman, Geçmiş, Takviye, Beslenme, Ölçümler) -->
         <nav class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-lg border-t border-slate-800 z-40 px-2 py-2">
             <div class="max-w-md mx-auto grid grid-cols-5 text-center text-xs">
                 <button onclick="switchTab('workout')" id="nav-workout" class="nav-btn active flex flex-col items-center gap-1 text-brand-500">
@@ -360,6 +360,32 @@
             { id: "post_shake", name: "Whey + Kreatin (5g) + Glutamin (5g)", dose: "1 Shaker", time: "21:30 (Antrenman Sonu)", reason: "Gece kas protein sentezi (mTOR) & hücresel dolum" },
             { id: "mag", name: "Magnezyum Bisglisinat", dose: "250-350 mg", time: "22:45 (Yatmadan 45 Dk)", reason: "Sempatik sistemi yatıştırma, HRV koruma & Derin Uyku" }
         ];
+
+        // PDF Raporundaki Varsayılan Emniyet Kiloları (Tabloda 0 gelse bile kutuyu doldurur)
+        const DEFAULT_WEIGHTS = {
+            "Dumbbell Bench Press": 20,
+            "One-Arm Dumbbell Row": 20,
+            "Seated Dumbbell Press": 16,
+            "Band Lat Pulldown": 0,
+            "Dumbbell Lateral Raise": 8,
+            "DB Bicep Curl + Overhead Tricep Ext": 12,
+            "Goblet Squat": 24,
+            "Dumbbell Romanian Deadlift (RDL)": 24,
+            "Dumbbell Step-Up / Split Squat": 14,
+            "Standing Dumbbell Calf Raise": 18,
+            "Plank veya Sehpada Crunch / Leg Raise": 0,
+            "Incline Dumbbell Press": 18,
+            "Chest-Supported Dumbbell Row": 18,
+            "Dumbbell Arnold Press veya Lateral Raise": 14,
+            "Band Face Pull": 0,
+            "Dumbbell Hammer Curl": 12,
+            "Bench Dips veya Lying DB Skullcrusher": 14,
+            "Sumo Squat (Geniş Duruş Ağır DB)": 26,
+            "Dumbbell Hip Thrust (Sırt Sehpada)": 24,
+            "Lying Banded Leg Curl": 0,
+            "Oturarak DB Calf Raise": 18,
+            "Deadbug / Ab Rollout / Leg Raise": 0
+        };
 
         let state = {
             activeDay: "Pazartesi",
@@ -505,7 +531,7 @@
             const str = ("" + rawStr).trim();
             const nums = str.match(/\d+/g);
             if (nums && nums.length > 0) {
-                return nums[nums.length - 1];
+                return nums[nums.length - 1]; // "8-10" -> 10, "10-12" -> 12
             }
             return "10";
         }
@@ -521,6 +547,7 @@
 
             const dayRows = state.programData.filter(r => (r.Gun || '').trim().toLowerCase() === state.activeDay.trim().toLowerCase());
 
+            // TAM DİNLENME GÜNÜ
             if (dayRows.length === 0) {
                 document.getElementById('workoutTitle').innerText = "Dinlenme & Aktif Toparlanma";
                 document.getElementById('workoutDesc').innerText = "Bugün kas onarımı için tam dinlenme günü.";
@@ -540,6 +567,7 @@
                 return;
             }
 
+            // ANTRENMAN GÜNÜ
             timerBar.classList.remove('hidden');
             completeBtn.classList.remove('hidden');
             document.getElementById('workoutTitle').innerText = `${state.activeDay} Antrenmanı`;
@@ -579,9 +607,13 @@
                     const rawReps = ("" + (ex.Hedef_Tekrar || "")).trim();
                     const defaultRep = getSafeRepNumber(rawReps);
                     
+                    // Varsayılan kg: Tabloda varsa al, yoksa veya 0 ise DEFAULT_WEIGHTS sözlüğünden çek
                     let defaultKg = "";
-                    if (ex.Varsayilan_Kg !== undefined && ex.Varsayilan_Kg !== null && ("" + ex.Varsayilan_Kg).trim() !== "") {
-                        defaultKg = ("" + ex.Varsayilan_Kg).trim();
+                    let parsedKg = parseFloat(ex.Varsayilan_Kg);
+                    if (!isNaN(parsedKg) && parsedKg > 0) {
+                        defaultKg = parsedKg;
+                    } else if (DEFAULT_WEIGHTS[ex.Egzersiz_Adi] !== undefined) {
+                        defaultKg = DEFAULT_WEIGHTS[ex.Egzersiz_Adi];
                     }
 
                     const setCount = parseInt(ex.Hedef_Set) || 3;
@@ -605,8 +637,8 @@
                         groupHTML += `
                             <div class="flex items-center gap-2 text-xs">
                                 <span class="text-[10px] text-slate-500 font-mono w-7">S${s}:</span>
-                                <input type="text" inputmode="decimal" placeholder="kg" value="${defaultKg}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
-                                <input type="text" inputmode="numeric" placeholder="tekrar" value="${defaultRep}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="number" step="0.5" placeholder="kg" value="${defaultKg}" id="w_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
+                                <input type="number" placeholder="tekrar" value="${defaultRep}" id="r_${ex.Sira}_${s}" class="w-16 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-center text-xs text-white">
                                 <label class="flex items-center gap-1 cursor-pointer ml-auto">
                                     <input type="checkbox" onchange="triggerTimerOnSet(this)" id="chk_${ex.Sira}_${s}" class="w-4 h-4 rounded text-brand-500 bg-slate-950 border-slate-800">
                                 </label>
@@ -662,12 +694,9 @@
             const container = document.getElementById('historyList');
             container.innerHTML = '';
 
-            // Tarih ve Programa göre grupla
             const groups = {};
-            // En yeni tarih en üstte olsun diye ters çevir
             [...logs].reverse().forEach(row => {
                 const rawDate = row.Tarih || 'Bilinmeyen Tarih';
-                // ISO formatını temizle (2026-10-19T... -> 2026-10-19)
                 const dStr = ("" + rawDate).split('T')[0];
                 const prog = row.Program_Adi || 'Antrenman';
                 const key = `${dStr}___${prog}`;
@@ -842,7 +871,7 @@
                     if (wInput && rInput) {
                         let parsedWeight = parseFloat(wInput.value);
                         if (isNaN(parsedWeight)) {
-                            parsedWeight = parseFloat(ex.Varsayilan_Kg) || 0;
+                            parsedWeight = parseFloat(DEFAULT_WEIGHTS[ex.Egzersiz_Adi]) || 0;
                         }
 
                         let parsedReps = parseInt(rInput.value);
