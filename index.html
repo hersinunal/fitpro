@@ -195,7 +195,7 @@
                 </div>
             </section>
 
-            <!-- VIEW 2: SUPPLEMENTS & DETOKS (ÇİFT YÖNLÜ TEYİTLİ) -->
+            <!-- VIEW 2: SUPPLEMENTS & DETOKS -->
             <section id="view-supplements" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
@@ -211,21 +211,60 @@
                 <div class="space-y-3" id="supplementList"></div>
             </section>
 
-            <!-- VIEW 3: HISTORY (GEÇMİŞ ANTRENMAN LOGLARI - HEPSİ KAPALI AKORDİYON) -->
+            <!-- VIEW 3: HISTORY (ÇİFT AKORDİYONLU GEÇMİŞ) -->
             <section id="view-history" class="app-view hidden space-y-4">
                 <div class="bg-cardbg p-4 rounded-2xl border border-slate-800 shadow-xl flex justify-between items-center">
                     <div>
                         <h2 class="text-sm font-bold text-white flex items-center gap-2">
-                            <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Antrenman Geçmişi & Ağırlıklar
+                            <i class="fa-solid fa-clock-rotate-left text-brand-500"></i> Geçmiş Loglar & Arşiv
                         </h2>
-                        <p class="text-[11px] text-slate-400 mt-0.5">Tarihe tıklayarak detayları açın</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">Google E-Tablo kayıtları</p>
                     </div>
-                    <button onclick="fetchHistoryFromSheets()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-xs border border-slate-700 flex items-center gap-1">
+                    <button onclick="fetchAllHistory()" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-lg text-xs border border-slate-700 flex items-center gap-1">
                         <i class="fa-solid fa-arrows-rotate text-brand-500 text-[10px]"></i> Yenile
                     </button>
                 </div>
-                <div id="historyList" class="space-y-2.5">
-                    <div class="text-center py-8 text-xs text-slate-500">Geçmiş antrenmanlar yükleniyor...</div>
+
+                <!-- 1. ANA BÖLÜM: ANTRENMAN GEÇMİŞİ & AĞIRLIKLAR AKORDİYONU -->
+                <div class="bg-cardbg border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                    <div onclick="toggleSection('workoutSection')" class="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-800/40 transition border-b border-slate-800/50">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-2 bg-emerald-500/10 text-brand-400 rounded-xl text-sm">
+                                <i class="fa-solid fa-dumbbell"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-bold text-white">Antrenman Geçmişi & Ağırlıklar</h3>
+                                <p class="text-[10px] text-slate-400">Yapılan seanslar, kaldırılan kilolar ve bisiklet</p>
+                            </div>
+                        </div>
+                        <i id="icon-workoutSection" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+                    </div>
+                    <div id="body-workoutSection" class="hidden p-3 space-y-2.5 bg-slate-950/40">
+                        <div id="workoutHistoryList" class="space-y-2">
+                            <div class="text-center py-4 text-xs text-slate-500">Antrenman kayıtları yükleniyor...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. ANA BÖLÜM: TAKVİYE & DETOKS GEÇMİŞİ AKORDİYONU -->
+                <div class="bg-cardbg border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+                    <div onclick="toggleSection('suppSection')" class="p-4 flex justify-between items-center cursor-pointer hover:bg-slate-800/40 transition border-b border-slate-800/50">
+                        <div class="flex items-center gap-2.5">
+                            <div class="p-2 bg-blue-500/10 text-accent rounded-xl text-sm">
+                                <i class="fa-solid fa-capsules"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-xs font-bold text-white">Takviye & Detoks Geçmişi</h3>
+                                <p class="text-[10px] text-slate-400">Hangi gün ne alındı, ne unutuldu?</p>
+                            </div>
+                        </div>
+                        <i id="icon-suppSection" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+                    </div>
+                    <div id="body-suppSection" class="hidden p-3 space-y-2.5 bg-slate-950/40">
+                        <div id="suppHistoryList" class="space-y-2">
+                            <div class="text-center py-4 text-xs text-slate-500">Takviye kayıtları yükleniyor...</div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
@@ -388,7 +427,6 @@
         let state = {
             activeDay: "Pazartesi",
             programData: [],
-            historyData: [],
             metrics: JSON.parse(localStorage.getItem('fitpro_metrics')) || [{ date: 'Başlangıç', weight: 110, waist: 108 }],
             water: 0
         };
@@ -396,7 +434,7 @@
         let timerInterval = null;
         let chartInstance = null;
 
-        // --- AUTH & INIT ---
+        // --- AUTH & INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
             const isAuth = localStorage.getItem('fitpro_authenticated');
             if (isAuth === 'true') {
@@ -475,7 +513,7 @@
             initWaterForToday();
             fetchProgramFromSheets();
             renderSupplements();
-            fetchTodaySupplementsFromSheets(); // Tablodan bugünkü onayları anında çek
+            fetchTodaySupplementsFromSheets();
             processSyncQueue();
         }
 
@@ -519,7 +557,7 @@
                 activeBtn.classList.add('text-brand-500');
             }
             if (tabId === 'metrics') renderChartSafely();
-            if (tabId === 'history') fetchHistoryFromSheets();
+            if (tabId === 'history') fetchAllHistory();
             if (tabId === 'supplements') fetchTodaySupplementsFromSheets();
         }
 
@@ -686,35 +724,51 @@
             }
         }
 
-        // --- GEÇMİŞ (HISTORY) ---
-        async function fetchHistoryFromSheets() {
-            const container = document.getElementById('historyList');
+        // ==========================================
+        // GEÇMİŞ (HISTORY) - İKİ ANA AKORDİYON MOTORU
+        // ==========================================
+        function toggleSection(sectionId) {
+            const body = document.getElementById(`body-${sectionId}`);
+            const icon = document.getElementById(`icon-${sectionId}`);
+            if (!body || !icon) return;
+
+            if (body.classList.contains('hidden')) {
+                body.classList.remove('hidden');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            } else {
+                body.classList.add('hidden');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        }
+
+        async function fetchAllHistory() {
+            fetchWorkoutHistory();
+            fetchSupplementHistory();
+        }
+
+        // 1. Antrenman Geçmişini Çek ve Render Et
+        async function fetchWorkoutHistory() {
+            const container = document.getElementById('workoutHistoryList');
             if (!container) return;
-            container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1 text-brand-500"></i> Google Tablodan kayıtlar alınıyor...</div>';
+            container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1 text-brand-500"></i> Antrenman kayıtları alınıyor...</div>';
 
             try {
                 const res = await fetch(`${API_URL}?action=getHistory&nocache=${Date.now()}`);
                 const json = await res.json();
                 if (json.status === "success" && json.data.length > 0) {
-                    state.historyData = json.data;
-                    localStorage.setItem('fitpro_cached_history', JSON.stringify(json.data));
-                    renderHistory(json.data);
+                    renderWorkoutHistory(json.data);
                 } else {
-                    container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500">Henüz kaydedilmiş antrenman bulunamadı.</div>';
+                    container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500">Kayıtlı antrenman bulunamadı.</div>';
                 }
-            } catch (err) {
-                console.warn("History fetch failed, using cache:", err);
-                const cached = JSON.parse(localStorage.getItem('fitpro_cached_history')) || [];
-                if (cached.length > 0) {
-                    renderHistory(cached);
-                } else {
-                    container.innerHTML = '<div class="text-center py-8 text-xs text-rose-400">Geçmiş veriler alınamadı. İnternet bağlantınızı kontrol edin.</div>';
-                }
+            } catch(e) {
+                container.innerHTML = '<div class="text-center py-4 text-xs text-rose-400">Antrenman geçmişi alınamadı.</div>';
             }
         }
 
-        function renderHistory(logs) {
-            const container = document.getElementById('historyList');
+        function renderWorkoutHistory(logs) {
+            const container = document.getElementById('workoutHistoryList');
             if (!container) return;
             container.innerHTML = '';
 
@@ -756,7 +810,7 @@
 
             const keys = Object.keys(groups).reverse();
             if (keys.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-xs text-slate-500">Kayıtlı antrenman yok.</div>';
+                container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500">Kayıtlı antrenman yok.</div>';
                 return;
             }
 
@@ -783,29 +837,24 @@
                 }
 
                 const cardioBadge = session.cardio > 0 ? `
-                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2.5 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
+                    <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full text-[10px] font-semibold flex items-center gap-1">
                         <i class="fa-solid fa-person-biking text-xs"></i> ${session.cardio} Dk Bisiklet
                     </span>
                 ` : '';
 
-                // TÜM KARTLAR BAŞLANGIÇTA KAPALI
                 container.innerHTML += `
-                    <div class="bg-cardbg border border-slate-800 rounded-2xl overflow-hidden shadow-md">
-                        <div onclick="toggleHistoryCard('${idx}')" class="p-3.5 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition">
+                    <div class="bg-slate-900/90 border border-slate-800/80 rounded-xl overflow-hidden">
+                        <div onclick="toggleSubItem('w_${idx}')" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition">
                             <div class="space-y-0.5">
-                                <div class="text-xs font-bold text-white flex items-center gap-2">
-                                    <span class="text-brand-400">${session.program}</span>
-                                </div>
-                                <div class="text-[11px] text-slate-400 font-mono">
-                                    <i class="fa-regular fa-calendar mr-1"></i>${session.date}
-                                </div>
+                                <div class="text-xs font-bold text-brand-400">${session.program}</div>
+                                <div class="text-[10px] text-slate-400 font-mono"><i class="fa-regular fa-calendar mr-1"></i>${session.date}</div>
                             </div>
                             <div class="flex items-center gap-2">
                                 ${cardioBadge}
-                                <i id="icon-${idx}" class="fa-solid fa-chevron-down text-slate-400 text-xs"></i>
+                                <i id="icon-w_${idx}" class="fa-solid fa-chevron-down text-slate-500 text-[10px]"></i>
                             </div>
                         </div>
-                        <div id="body-${idx}" class="hidden border-t border-slate-800/80 p-3 bg-slate-900/60 space-y-2.5">
+                        <div id="body-w_${idx}" class="hidden border-t border-slate-800/60 p-3 bg-slate-950/60 space-y-2">
                             ${exHtml}
                         </div>
                     </div>
@@ -813,9 +862,91 @@
             });
         }
 
-        function toggleHistoryCard(idx) {
-            const body = document.getElementById(`body-${idx}`);
-            const icon = document.getElementById(`icon-${idx}`);
+        // 2. Takviye Geçmişini Çek ve Render Et
+        async function fetchSupplementHistory() {
+            const container = document.getElementById('suppHistoryList');
+            if (!container) return;
+            container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500"><i class="fa-solid fa-spinner fa-spin mr-1 text-accent"></i> Takviye kayıtları alınıyor...</div>';
+
+            try {
+                const res = await fetch(`${API_URL}?action=getSupplementHistory&nocache=${Date.now()}`);
+                const json = await res.json();
+                if (json.status === "success" && json.data.length > 0) {
+                    renderSupplementHistory(json.data);
+                } else {
+                    container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500">Kayıtlı takviye bulunamadı.</div>';
+                }
+            } catch(e) {
+                container.innerHTML = '<div class="text-center py-4 text-xs text-rose-400">Takviye geçmişi alınamadı.</div>';
+            }
+        }
+
+        function renderSupplementHistory(logs) {
+            const container = document.getElementById('suppHistoryList');
+            if (!container) return;
+            container.innerHTML = '';
+
+            // Gün bazında alınan takviyeleri grupla
+            const dayGroups = {};
+            logs.forEach(row => {
+                const rawDate = row.Tarih || '';
+                const dStr = ("" + rawDate).split('T')[0];
+                if (!dStr) return;
+
+                if (!dayGroups[dStr]) dayGroups[dStr] = [];
+                if (row.Durum === "ALINDI" && !dayGroups[dStr].includes(row.Takviye_Adi)) {
+                    dayGroups[dStr].push(row.Takviye_Adi);
+                }
+            });
+
+            const dates = Object.keys(dayGroups).reverse();
+            if (dates.length === 0) {
+                container.innerHTML = '<div class="text-center py-4 text-xs text-slate-500">Kayıtlı takviye yok.</div>';
+                return;
+            }
+
+            dates.forEach((dStr, idx) => {
+                const takenList = dayGroups[dStr];
+                const takenCount = takenList.length;
+                const totalCount = MASTER_SUPPLEMENTS.length;
+                const allDone = takenCount >= totalCount;
+
+                let suppItemsHtml = '';
+                MASTER_SUPPLEMENTS.forEach(sup => {
+                    const isTaken = takenList.includes(sup.name);
+                    suppItemsHtml += `
+                        <div class="flex items-center justify-between py-1.5 border-b border-slate-800/40 last:border-0 text-xs">
+                            <div class="space-y-0.5">
+                                <span class="font-medium ${isTaken ? 'text-slate-200' : 'text-slate-400 line-through opacity-60'}">${sup.name}</span>
+                                <div class="text-[9px] text-slate-500">${sup.time}</div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isTaken ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/50' : 'bg-slate-900 text-slate-600 border border-slate-800'}">
+                                ${isTaken ? '✓ Alındı' : '✗ Unutuldu'}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML += `
+                    <div class="bg-slate-900/90 border border-slate-800/80 rounded-xl overflow-hidden">
+                        <div onclick="toggleSubItem('s_${idx}')" class="p-3 flex justify-between items-center cursor-pointer hover:bg-slate-800/50 transition">
+                            <div class="space-y-0.5">
+                                <div class="text-xs font-bold text-white font-mono"><i class="fa-regular fa-calendar mr-1 text-accent"></i>${dStr}</div>
+                                <div class="text-[10px] ${allDone ? 'text-brand-400' : 'text-amber-400'}">${takenCount} / ${totalCount} Takviye Alındı</div>
+                            </div>
+                            <i id="icon-s_${idx}" class="fa-solid fa-chevron-down text-slate-500 text-[10px]"></i>
+                        </div>
+                        <div id="body-s_${idx}" class="hidden border-t border-slate-800/60 p-3 bg-slate-950/60 space-y-1">
+                            ${suppItemsHtml}
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function toggleSubItem(id) {
+            const body = document.getElementById(`body-${id}`);
+            const icon = document.getElementById(`icon-${id}`);
             if (!body || !icon) return;
 
             if (body.classList.contains('hidden')) {
@@ -966,14 +1097,13 @@
             alert("Harika! Antrenman verileriniz Google Sheets tablonuza işlendi.");
         }
 
-        // --- SUPPLEMENTS (ÇİFT YÖNLÜ TABLO DOĞRULAMALI) ---
+        // --- SUPPLEMENTS ---
         function getTodaySupps() {
             const key = `fitpro_supps_${getTodayKey()}`;
             const stored = localStorage.getItem(key);
             
             if (stored) {
                 let current = JSON.parse(stored);
-                // Eksik olan Green/Red detoksları listeye otomatik ekle
                 const hasGreen = current.some(s => s.id === "green_detox");
                 if (!hasGreen) {
                     current = MASTER_SUPPLEMENTS.map(master => {
@@ -990,7 +1120,6 @@
             }
         }
 
-        // Google Sheets'ten bugünkü onayları çeker ve kutucukları otomatik yeşil yapar
         async function fetchTodaySupplementsFromSheets() {
             try {
                 const res = await fetch(`${API_URL}?action=getTodayStatus&nocache=${Date.now()}`);
