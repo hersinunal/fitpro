@@ -81,7 +81,7 @@
                     <span class="text-xs text-slate-400">Bu Cihazda Beni Hatırla</span>
                 </label>
 
-                <button onclick="checkPin()" class="w-full py-3 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-2 shadow-lg shadow-brand-600/30 transition">
+                <button type="button" onclick="checkPin()" class="w-full py-3 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white font-bold rounded-2xl text-xs flex justify-center items-center gap-2 shadow-lg shadow-brand-600/30 transition">
                     <i class="fa-solid fa-lock-open"></i> Giriş Yap
                 </button>
             </div>
@@ -396,7 +396,7 @@
         let timerInterval = null;
         let chartInstance = null;
 
-        // --- AUTH LOGIC ---
+        // --- AUTH & INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             const isAuth = localStorage.getItem('fitpro_authenticated');
             if (isAuth === 'true') {
@@ -415,10 +415,11 @@
         });
 
         function checkPin() {
-            const entered = (document.getElementById('pinInput').value || '').trim();
+            const pinBox = document.getElementById('pinInput');
+            const entered = (pinBox ? pinBox.value : '').trim();
             const errEl = document.getElementById('pinError');
             const cardEl = document.getElementById('authCard');
-            const rememberMe = document.getElementById('rememberMeCheck').checked;
+            const rememberMe = document.getElementById('rememberMeCheck') ? document.getElementById('rememberMeCheck').checked : true;
 
             if (entered === APP_PIN) {
                 if (errEl) errEl.classList.add('hidden');
@@ -432,20 +433,22 @@
                     cardEl.classList.add('animate-shake');
                     setTimeout(() => cardEl.classList.remove('animate-shake'), 400);
                 }
-                document.getElementById('pinInput').value = '';
+                if (pinBox) pinBox.value = '';
             }
         }
 
         function unlockApp() {
+            // Önce kilit ekranını zorla kaldır, ana ekranı göster
             const overlay = document.getElementById('authOverlay');
             const main = document.getElementById('mainApp');
-            if (overlay) overlay.classList.add('hidden');
+            if (overlay) overlay.style.display = 'none';
             if (main) main.classList.remove('hidden');
 
+            // Sonra verileri güvenle başlat
             try {
                 initApp();
             } catch(e) {
-                console.error("InitApp error:", e);
+                console.error("Uygulama başlatma hatası:", e);
             }
         }
 
@@ -454,7 +457,10 @@
             const main = document.getElementById('mainApp');
             const overlay = document.getElementById('authOverlay');
             if (main) main.classList.add('hidden');
-            if (overlay) overlay.classList.remove('hidden');
+            if (overlay) {
+                overlay.style.display = 'flex';
+                overlay.classList.remove('hidden');
+            }
             const pinBox = document.getElementById('pinInput');
             if (pinBox) pinBox.value = '';
             const errBox = document.getElementById('pinError');
